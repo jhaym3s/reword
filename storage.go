@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 
@@ -14,6 +15,7 @@ type Storage interface {
 	DeleteAccount(int) error
 	UpdateAccount(*Account) error
 	GetAccountById(int) (*Account, error)
+	GetAccounts()([]*Account,  error)
 }
 
 type PostgresStore struct {
@@ -63,7 +65,13 @@ func (s *PostgresStore) CreateAccountTable() error {
 	return nil
 }
 
-func (s *PostgresStore) CreateAccount(*Account) error {
+func (s *PostgresStore) CreateAccount(account *Account) error {
+	query := `INSERT INTO account (firstName, lastName,number,balance, created_at) VALUES ($1, $2,$3,$4,$5)`
+	resp, err := s.db.Exec(query, account.FirstName, account.LastName, account.Number, account.Balance, account.CreatedAt)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%+v", resp)
 	return nil
 }
 
@@ -77,4 +85,28 @@ func (s *PostgresStore) UpdateAccount(*Account) error {
 
 func (s *PostgresStore) GetAccountById(int) (*Account, error) {
 	return &Account{}, nil
+}
+
+func (s *PostgresStore) GetAccounts() ([]*Account, error) {
+	rows, err := s.db.Query(`select * from account`)
+	if err != nil {
+		return nil, err
+	}
+	accounts := []*Account{}
+	for rows.Next() {
+		account := new(Account)
+		err:=rows.Scan(
+			&account.ID,
+			&account.FirstName,
+			&account.LastName,
+			&account.Number,
+			&account.Balance,
+			&account.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts,account)
+	}
+	return accounts, nil
 }
