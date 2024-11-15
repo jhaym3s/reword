@@ -5,13 +5,13 @@ import (
 )
 
 func main() {
-	store,err := NewPostgresStore()
+	store, err := NewPostgresStore()
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err:= store.init(); err != nil{
+	if err := store.init(); err != nil {
 		log.Fatal(err)
 	}
-	server := newAPIServer(":3000", store)
-	server.run();
+	server := NewAPIServer(":3000", store)
+	server.run()
 }

@@ -14,7 +14,7 @@ type ApiServer struct {
 	store      Storage
 }
 
-func newAPIServer(listenAddr string, store Storage) *ApiServer {
+func NewAPIServer(listenAddr string, store Storage) *ApiServer {
 	return &ApiServer{
 		listenAddr: listenAddr,
 		store:      store,
@@ -23,38 +23,41 @@ func newAPIServer(listenAddr string, store Storage) *ApiServer {
 
 func (s *ApiServer) run() {
 	router := mux.NewRouter()
-	router.HandleFunc("/account", makeHTTPHandleFunc(s.handleAccount))
-	router.HandleFunc("/account/{id}", makeHTTPHandleFunc(s.handleGetAccountById))
+	router.HandleFunc("/account", MakeHTTPHandleFunc(s.handleAccount))
+	router.HandleFunc("/account/{id}", MakeHTTPHandleFunc(s.HandleGetAccountById))
 	log.Println("Api server running on ", s.listenAddr)
 	http.ListenAndServe(s.listenAddr, router)
 }
 
 func (s *ApiServer) handleAccount(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
-		return s.handleGetAccount(w, r)
+		return s.HandleGetAccount(w, r)
 	}
 	if r.Method == "POST" {
 		return s.handleCreateAccount(w, r)
 	}
 	if r.Method == "DELETE" {
-		return s.handleDeleteAccount(w, r)
+		return s.HandleDeleteAccount(w, r)
+	}
+	if r.Method == "Paste" {
+		return s.HandleTransfer(w, r)
 	}
 	return fmt.Errorf("method not allowed %s", r.Method)
 }
 
-func (s *ApiServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
+func (s *ApiServer) HandleGetAccount(w http.ResponseWriter, r *http.Request) error {
 	accounts, err := s.store.GetAccounts()
 	if err != nil {
 		return err
 	}
-	return writeJson(w, http.StatusOK, accounts)
+	return WriteJson(w, http.StatusOK, accounts)
 }
 
-func (s *ApiServer) handleGetAccountById(w http.ResponseWriter, r *http.Request) error {
+func (s *ApiServer) HandleGetAccountById(w http.ResponseWriter, r *http.Request) error {
 	id := mux.Vars(r)["id"]
 	fmt.Printf("account id %s", id)
 	//account := NewAccount("Jhaymes", "ifiok")
-	return writeJson(w, http.StatusOK, &Account{})
+	return WriteJson(w, http.StatusOK, &Account{})
 }
 
 func (s *ApiServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
@@ -63,25 +66,24 @@ func (s *ApiServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 	account := NewAccount(createAccountRequest.FirstName, createAccountRequest.LastName)
-
 	if err := s.store.CreateAccount(account); err != nil {
 		return err
 	}
-	return writeJson(w, http.StatusOK, account)
+	return WriteJson(w, http.StatusOK, account)
 
 }
 
-func (s *ApiServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
+func (s *ApiServer) HandleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s *ApiServer) handleTransfer(w http.ResponseWriter, r *http.Request) error {
+func (s *ApiServer) HandleTransfer(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func writeJson(w http.ResponseWriter, status int, v any) error {
+func WriteJson(w http.ResponseWriter, status int, v any) error {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(v)
 }
 
@@ -90,10 +92,10 @@ type apiError struct {
 }
 type apiFunc func(w http.ResponseWriter, r *http.Request) error
 
-func makeHTTPHandleFunc(f apiFunc) http.HandlerFunc {
+func MakeHTTPHandleFunc(f apiFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
-			writeJson(w, http.StatusBadRequest, apiError{Error: err.Error()})
+			WriteJson(w, http.StatusBadRequest, apiError{Error: err.Error()})
 		}
 	}
 }
